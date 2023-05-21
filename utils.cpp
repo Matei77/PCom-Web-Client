@@ -9,19 +9,19 @@ void ComputeMessage(string &message, string &line) {
 }
 
 bool isStringNumerical(string str) {
-    // Check if the string is empty
+    // check if the string is empty
     if (str.empty()) {
         return false;
     }
 
-    // Iterate through each character of the string
+    // iterate through each character of the string
     for (auto c : str) {
-        // Check if the character is not a digit
+        // check if the character is not a digit
         if (!isdigit(c)) {
             return false;
         }
     }
 
-    // All characters are digits
+    // all characters are digits
     return true;
 }

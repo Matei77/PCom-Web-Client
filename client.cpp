@@ -19,35 +19,27 @@ void Client::RunClient() {
 		conn.OpenConnection();
 
 		if (command == "register") {
-			//cout << "register" << endl;
 			Register();
 
 		} else if (command == "login") {
-			//cout << "login" << endl;
 			Login();
 
 		} else if (command == "enter_library") {
-			//cout << "enter_library" << endl;
 			EnterLibrary();
 
 		} else if (command == "get_books") {
-			//cout << "get_books" << endl;
 			GetBooks();
 
 		} else if (command == "get_book") {
-			//cout << "get_book" << endl;
 			GetBook();
 
 		} else if (command == "add_book") {
-			//cout << "add_book" << endl;
 			AddBook();
 
 		} else if (command == "delete_book") {
-			//cout << "delete_book" << endl;
 			DeleteBook();
 		
 		} else if (command == "logout") {
-			//cout << "logout" << endl;
 			Logout();
 		
 		} else if (command == "exit") {
@@ -88,11 +80,9 @@ void Client::Register() {
 
 
 	message = ComputePostRequest(conn.GetHost(), REGISTER_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
-	// cout << endl << message << endl;
 
 	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
-	// cout << response << endl;
 
 	if (response.find("HTTP/1.1 201 Created") != string::npos) {
 		cout << "Account was created successfully." << endl << endl;
@@ -128,11 +118,9 @@ void Client::Login() {
 	body_data.push_back("\"password\": \"" + password + "\"");
 
 	message = ComputePostRequest(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
-	//cout << endl << message << endl;
 
 	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
-	//cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") != string::npos) {
 		cout << "Logged in successfully." << endl << endl;
