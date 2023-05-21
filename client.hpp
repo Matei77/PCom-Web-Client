@@ -2,7 +2,11 @@
 #ifndef CLIENT_HPP_
 #define CLIENT_HPP_
 
+#include <vector>
+#include <string>
+
 #include "connection.hpp"
+
 
 #define REGISTER_URL "/api/v1/tema/auth/register"
 #define LOGIN_URL "/api/v1/tema/auth/login"
@@ -12,14 +16,20 @@
 
 #define JSON_PAYLOAD "application/json"
 
+
 class Client {
 	private:
 		Connection conn;
+		vector<string> cookies;
+		bool logged_in;
 
 	public:
 		Client(uint16_t port, string host);
 
 		void RunClient();
+
+		bool GetLoggedIn();
+		void SetLoggedIn(bool logged_in);
 
 	private:
 		void Register();
@@ -34,5 +44,12 @@ class Client {
 };
 
 inline Client::Client(uint16_t port, string host) : conn(port, host) { }
+
+inline bool Client::GetLoggedIn() {
+	return this->logged_in;
+}
+inline void Client::SetLoggedIn(bool logged_in){
+	this->logged_in = logged_in;
+}
 
 #endif  // CLIENT_HPP_
