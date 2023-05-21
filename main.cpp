@@ -6,4 +6,6 @@
 int main() {
 	Client client(PORT, SERVER_ADDR);
 	client.RunClient();
+
+	return 0;
 }

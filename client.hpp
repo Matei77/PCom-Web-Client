@@ -1,11 +1,18 @@
+// Copyright Ionescu Matei-Stefan - 323CAb - 2022-2023
+#ifndef CLIENT_HPP_
+#define CLIENT_HPP_
+
 #include "connection.hpp"
+
+#define BUFLEN 4096
+#define LINELEN 1000
 
 class Client {
 	private:
 		Connection conn;
 
 	public:
-		Client(uint16_t port, string host_addr);
+		Client(uint16_t port, string host);
 
 		void RunClient();
 
@@ -21,4 +28,6 @@ class Client {
 		void Exit();
 };
 
-inline Client::Client(uint16_t port, string host_addr) : conn(port, host_addr) { }
+inline Client::Client(uint16_t port, string host) : conn(port, host) { }
+
+#endif  // CLIENT_HPP_
