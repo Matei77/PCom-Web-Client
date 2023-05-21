@@ -4,8 +4,13 @@
 
 #include "connection.hpp"
 
-#define BUFLEN 4096
-#define LINELEN 1000
+#define REGISTER_URL "/api/v1/tema/auth/register"
+#define LOGIN_URL "/api/v1/tema/auth/login"
+#define ACCESS_URL "/api/v1/tema/auth/access"
+#define BOOKS_URL "/api/v1/tema/auth/books"
+#define LOGOUT_URL "/api/v1/tema/auth/logout"
+
+#define JSON_PAYLOAD "application/json"
 
 class Client {
 	private:

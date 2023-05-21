@@ -60,12 +60,15 @@ string compute_post_request(string host, string url, string content_type, vector
 	compute_message(message, line);
 
 	// make content buffer
+	data_buffer += "{";
 	for (auto data : body_data) {
-		data_buffer += data + "&";
+		data_buffer += data + ", ";
 	}
 
-	// remove the last "&"
-	data_buffer.resize(data_buffer.size() - 1);
+	// remove the last ""
+	data_buffer.resize(data_buffer.size() - 2);
+	data_buffer += "}";
+
 
 	// set Content-Length
 	line += "Content-Length: " + to_string(data_buffer.size());
