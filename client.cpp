@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstring>
 
 using namespace std;
 
@@ -24,8 +25,9 @@ void Client::RunClient() {
 			Login();
 
 		} else if (command == "enter_library") {
-			cout << "enter_library" << endl;
-		
+			//cout << "enter_library" << endl;
+			EnterLibrary();
+
 		} else if (command == "get_books") {
 			cout << "get_books" << endl;
 		
@@ -102,15 +104,13 @@ void Client::Login() {
 
 	vector<string> body_data;
 
-	if (GetLoggedIn()) {
+	if (logged_in) {
 		cout << "You are already logged in." << endl << endl;
 		return;
 	}
 	
-	cout << "username=";
-	getline(cin, username);
-	cout << "password=";
-	getline(cin, password);
+	cout << "username="; getline(cin, username);
+	cout << "password="; getline(cin, password);
 
 	if (username.find(" ") != string::npos || password.find(" ") != string::npos) {
 		cout << "Spaces are not allowed in username/password." << endl << endl;
@@ -143,20 +143,41 @@ void Client::Login() {
 		return;
 	}
 
-	string cookie;
 	auto start_pos = response.find("connect.sid");
 	auto end_pos = response.find(";", start_pos);
 
-	cookie = response.substr(start_pos, end_pos - start_pos);
+	string cookie = response.substr(start_pos, end_pos - start_pos);
 	//cout << cookie << endl;
 
 	cookies.push_back(cookie);
-	SetLoggedIn(true);
+	logged_in = true;
 }
 
 
 void Client::EnterLibrary() {
+	string message;
+	string response;
 
+	if (!logged_in) {
+		cout << "You are not logged in." << endl << endl;
+		return;
+	}
+
+	message = compute_get_request(conn.GetHost(), ACCESS_URL, "", cookies);
+	//cout << endl << message << endl;
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+	//cout << response << endl;
+
+	auto start_pos = response.find("\"token\":\"");
+	start_pos += strlen("\"token\":\"");
+	
+	auto end_pos = response.find("\"", start_pos);
+	
+	jwt_token = response.substr(start_pos, end_pos - start_pos);
+	//cout << jwt_token << endl;
 }
 
 

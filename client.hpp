@@ -10,9 +10,9 @@
 
 #define REGISTER_URL "/api/v1/tema/auth/register"
 #define LOGIN_URL "/api/v1/tema/auth/login"
-#define ACCESS_URL "/api/v1/tema/auth/access"
-#define BOOKS_URL "/api/v1/tema/auth/books"
-#define LOGOUT_URL "/api/v1/tema/auth/logout"
+#define ACCESS_URL "/api/v1/tema/library/access"
+#define BOOKS_URL "/api/v1/tema/library/books"
+#define LOGOUT_URL "/api/v1/tema/library/logout"
 
 #define JSON_PAYLOAD "application/json"
 
@@ -21,7 +21,8 @@ class Client {
 	private:
 		Connection conn;
 		vector<string> cookies;
-		bool logged_in;
+		bool logged_in = false;
+		string jwt_token;
 
 	public:
 		Client(uint16_t port, string host);
@@ -45,11 +46,11 @@ class Client {
 
 inline Client::Client(uint16_t port, string host) : conn(port, host) { }
 
-inline bool Client::GetLoggedIn() {
-	return this->logged_in;
-}
-inline void Client::SetLoggedIn(bool logged_in){
-	this->logged_in = logged_in;
-}
+// inline bool Client::GetLoggedIn() {
+// 	return this->logged_in;
+// }
+// inline void Client::SetLoggedIn(bool logged_in){
+// 	this->logged_in = logged_in;
+// }
 
 #endif  // CLIENT_HPP_
