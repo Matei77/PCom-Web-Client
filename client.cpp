@@ -154,7 +154,6 @@ void Client::Login() {
 	auto end_pos = response.find(";", start_pos);
 
 	string cookie = response.substr(start_pos, end_pos - start_pos);
-	//cout << cookie << endl;
 
 	cookies.push_back(cookie);
 	logged_in = true;
@@ -171,12 +170,11 @@ void Client::EnterLibrary() {
 	}
 
 	message = ComputeGetRequest(conn.GetHost(), ACCESS_URL, "", cookies, "");
-	//cout << endl << message << endl;
 	
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	//cout << response << endl;
+	// TODO: check response
 
 	auto start_pos = response.find("\"token\":\"");
 	start_pos += strlen("\"token\":\"");
@@ -186,7 +184,6 @@ void Client::EnterLibrary() {
 	jwt_token = response.substr(start_pos, end_pos - start_pos);
 
 	cout << "Successfully entered library." << endl << endl;
-	//cout << jwt_token << endl;
 }
 
 
@@ -200,14 +197,24 @@ void Client::GetBooks() {
 	}
 
 	message = ComputeGetRequest(conn.GetHost(), BOOKS_URL, "", cookies, jwt_token);
-	//cout << endl << message << endl;
 	
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	// TODO: clean response
+	auto pos = response.find(HEADER_TERMINATOR);
+	pos += HEADER_TERMINATOR_SIZE;
+
+	string json_str = response.substr(pos);
+
+	nlohmann::json json_data = nlohmann::json::parse(json_str);
+
+	for (const auto & item : json_data) {
+		int id = item["id"];
+		string title = item["title"];
+
+		cout << "{id=" << id << "; " << "title=" << title << "}" << endl;
+	}
 }
 
 
@@ -233,14 +240,30 @@ void Client::GetBook() {
 	url += "/" + id;
 
 	message = ComputeGetRequest(conn.GetHost(), url, "", cookies, jwt_token);
-	//cout << endl << message << endl;
 	
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 	
-	// TODO: clean response
+	auto pos = response.find(HEADER_TERMINATOR);
+	pos += HEADER_TERMINATOR_SIZE;
+
+	string json_str = response.substr(pos);
+
+	nlohmann::json json_data = nlohmann::json::parse(json_str);
+
+	string title = json_data["title"];
+	string author = json_data["author"];
+	string genre = json_data["genre"];
+	string publisher = json_data["publisher"];
+	int page_count = json_data["page_count"];
+
+	cout << "title=" << title << endl;
+	cout << "author=" << author << endl;
+	cout << "genre=" << genre << endl;
+	cout << "publisher=" << publisher << endl;
+	cout << "page_count=" << page_count << endl;
+	cout << endl;
 }
 
 
@@ -253,6 +276,11 @@ void Client::AddBook() {
 	string genre;
 	string publisher;
 	string page_count;
+
+	if (jwt_token.empty()) {
+		cout << "You are not authorized. Enter library first." << endl << endl;
+		return;
+	}
 
 	cout << "title="; getline(cin, title);
 	cout << "author="; getline(cin, author);
@@ -271,16 +299,20 @@ void Client::AddBook() {
 	body_data.push_back("\"author\": \"" + author + "\"");
 	body_data.push_back("\"genre\": \"" + genre + "\"");
 	body_data.push_back("\"publisher\": \"" + publisher + "\"");
-	body_data.push_back("\"page_count\": \"" + page_count + "\"");
+	body_data.push_back("\"page_count\": " + page_count);
 
 	message = ComputePostRequest(conn.GetHost(), BOOKS_URL, JSON_PAYLOAD, body_data, cookies, jwt_token);
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	// TODO: clean response
+	if (response.find("HTTP/1.1 200 OK") != string::npos) {
+		cout << "Book added successfully." << endl << endl;
+
+	} else {
+		cout << "Invalid book info." << endl << endl;
+	}
 }
 
 
@@ -334,7 +366,6 @@ void Client::Logout() {
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") == string::npos) {
 		cout << "Log out failed." << endl << endl;
