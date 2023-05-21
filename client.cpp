@@ -9,18 +9,31 @@ using namespace std;
 
 void Client::RunClient() {
 	conn.OpenConnection();
-
-	string query_params;
-	vector<string> cookies;
-	cookies.push_back("key1=value1");
+	
+	string response;
 	string message;
 
-	message = compute_get_request(conn.GetHost(), "/api/v1/dummy", query_params, cookies);
-	cout <<"Generated message:\n" << message << endl;
+	string query_params;
+	
+	vector<string> cookies;
+	//cookies.push_back("key1=value1");
+	
+	vector<string> body_data;
+	body_data.push_back("key1=value1");
+	body_data.push_back("key2=value2");
+
+	message = compute_get_request(conn.GetHost(), "/api/v1/dummy", "", vector<string>{});
+	cout << message << endl;
 
 	conn.SendToServer(message);
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
-	string response;
+
+	message = compute_post_request(conn.GetHost(), "/api/v1/dummy", "application/x-www-form-urlencoded", body_data, vector<string>{});
+	cout << message << endl;
+
+	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
 	cout << response << endl;
 
