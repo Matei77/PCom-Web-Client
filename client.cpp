@@ -7,6 +7,8 @@ using namespace std;
 
 #include "client.hpp"
 #include "requests.hpp"
+#include "utils.hpp"
+#include "json.hpp"
 
 void Client::RunClient() {
 	string command;
@@ -29,19 +31,24 @@ void Client::RunClient() {
 			EnterLibrary();
 
 		} else if (command == "get_books") {
-			cout << "get_books" << endl;
-		
+			//cout << "get_books" << endl;
+			GetBooks();
+
 		} else if (command == "get_book") {
-			cout << "get_book" << endl;
-		
+			//cout << "get_book" << endl;
+			GetBook();
+
 		} else if (command == "add_book") {
-			cout << "add_book" << endl;
-		
+			//cout << "add_book" << endl;
+			AddBook();
+
 		} else if (command == "delete_book") {
-			cout << "delete_book" << endl;
+			//cout << "delete_book" << endl;
+			DeleteBook();
 		
 		} else if (command == "logout") {
-			cout << "logout" << endl;
+			//cout << "logout" << endl;
+			Logout();
 		
 		} else if (command == "exit") {
 			break;
@@ -80,14 +87,14 @@ void Client::Register() {
 	body_data.push_back("\"password\": \"" + password + "\"");
 
 
-	message = compute_post_request(conn.GetHost(), REGISTER_URL, JSON_PAYLOAD, body_data, vector<string>{});
+	message = ComputePostRequest(conn.GetHost(), REGISTER_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
 	// cout << endl << message << endl;
 
 	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
 	// cout << response << endl;
 
-	if (response.find("201 Created") != string::npos) {
+	if (response.find("HTTP/1.1 201 Created") != string::npos) {
 		cout << "Account was created successfully." << endl << endl;
 	} else {
 		cout << "The username is already taken." << endl << endl;
@@ -120,14 +127,14 @@ void Client::Login() {
 	body_data.push_back("\"username\": \"" + username + "\"");
 	body_data.push_back("\"password\": \"" + password + "\"");
 
-	message = compute_post_request(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data, vector<string>{});
+	message = ComputePostRequest(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
 	//cout << endl << message << endl;
 
 	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
 	//cout << response << endl;
 
-	if (response.find("200 OK") != string::npos) {
+	if (response.find("HTTP/1.1 200 OK") != string::npos) {
 		cout << "Logged in successfully." << endl << endl;
 
 	} else if (response.find("No account with this username!") != string::npos) {
@@ -163,7 +170,7 @@ void Client::EnterLibrary() {
 		return;
 	}
 
-	message = compute_get_request(conn.GetHost(), ACCESS_URL, "", cookies);
+	message = ComputeGetRequest(conn.GetHost(), ACCESS_URL, "", cookies, "");
 	//cout << endl << message << endl;
 	
 	conn.SendToServer(message);
@@ -177,36 +184,167 @@ void Client::EnterLibrary() {
 	auto end_pos = response.find("\"", start_pos);
 	
 	jwt_token = response.substr(start_pos, end_pos - start_pos);
+
+	cout << "Successfully entered library." << endl << endl;
 	//cout << jwt_token << endl;
 }
 
 
 void Client::GetBooks() {
+	string message;
+	string response;
 
+	if (jwt_token.empty()) {
+		cout << "You are not authorized. Enter library first." << endl << endl;
+		return;
+	}
+
+	message = ComputeGetRequest(conn.GetHost(), BOOKS_URL, "", cookies, jwt_token);
+	//cout << endl << message << endl;
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
+
+	// TODO: clean response
 }
 
 
 void Client::GetBook() {
+	string message;
+	string response;
 
+	string id;
+
+	if (jwt_token.empty()) {
+		cout << "You are not authorized. Enter library first." << endl << endl;
+		return;
+	}
+
+	cout << "id="; getline(cin, id);
+
+	if (!isStringNumerical(id)) {
+		cout << "Invalid id." << endl << endl;
+		return;
+	}
+
+	string url = BOOKS_URL;
+	url += "/" + id;
+
+	message = ComputeGetRequest(conn.GetHost(), url, "", cookies, jwt_token);
+	//cout << endl << message << endl;
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
+	
+	// TODO: clean response
 }
 
 
 void Client::AddBook() {
+	string message;
+	string response;
 
+	string title;
+	string author;
+	string genre;
+	string publisher;
+	string page_count;
+
+	cout << "title="; getline(cin, title);
+	cout << "author="; getline(cin, author);
+	cout << "genre="; getline(cin, genre);
+	cout << "publisher="; getline(cin, publisher);
+	cout << "page_count="; getline(cin, page_count);
+
+	if (!isStringNumerical(page_count)) {
+		cout << "Invalid page_count." << endl << endl;
+		return;
+	}
+
+	vector<string> body_data;
+
+	body_data.push_back("\"title\": \"" + title + "\"");
+	body_data.push_back("\"author\": \"" + author + "\"");
+	body_data.push_back("\"genre\": \"" + genre + "\"");
+	body_data.push_back("\"publisher\": \"" + publisher + "\"");
+	body_data.push_back("\"page_count\": \"" + page_count + "\"");
+
+	message = ComputePostRequest(conn.GetHost(), BOOKS_URL, JSON_PAYLOAD, body_data, cookies, jwt_token);
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
+
+	// TODO: clean response
 }
 
 
 void Client::DeleteBook() {
+	string message;
+	string response;
 
+	string id;
+
+	if (jwt_token.empty()) {
+		cout << "You are not authorized. Enter library first." << endl << endl;
+		return;
+	}
+
+	cout << "id="; getline(cin, id);
+
+	if (!isStringNumerical(id)) {
+		cout << "Invalid id." << endl << endl;
+		return;
+	}
+
+	string url = BOOKS_URL;
+	url += "/" + id;
+
+	message = ComputeDeleteRequest(conn.GetHost(), url, cookies, jwt_token);
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+
+	if (response.find("HTTP/1.1 200 OK") != string::npos) {
+		cout << "Book deleted successfully." << endl << endl;
+
+	} else {
+		cout << "No book was deleted." << endl << endl;
+	}
 }
 
 
 void Client::Logout() {
+	string message;
+	string response;
+
+	if (!logged_in) {
+		cout << "You are not logged in." << endl << endl;
+		return;
+	}
+
+	message = ComputeGetRequest(conn.GetHost(), LOGOUT_URL, "", cookies, "");
+	
+	conn.SendToServer(message);
+
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
+
+	if (response.find("HTTP/1.1 200 OK") == string::npos) {
+		cout << "Log out failed." << endl << endl;
+		return;
+	}
+
+	jwt_token.clear();
+	cookies.clear();
+	logged_in = false;
+
+	cout << "Logged out successfully." << endl << endl;
 
 }
-
-
-void Client::Exit() {
-
-}
-

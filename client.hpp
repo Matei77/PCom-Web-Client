@@ -10,9 +10,9 @@
 
 #define REGISTER_URL "/api/v1/tema/auth/register"
 #define LOGIN_URL "/api/v1/tema/auth/login"
+#define LOGOUT_URL "/api/v1/tema/auth/logout"
 #define ACCESS_URL "/api/v1/tema/library/access"
 #define BOOKS_URL "/api/v1/tema/library/books"
-#define LOGOUT_URL "/api/v1/tema/library/logout"
 
 #define JSON_PAYLOAD "application/json"
 
@@ -29,9 +29,6 @@ class Client {
 
 		void RunClient();
 
-		bool GetLoggedIn();
-		void SetLoggedIn(bool logged_in);
-
 	private:
 		void Register();
 		void Login();
@@ -41,16 +38,8 @@ class Client {
 		void AddBook();
 		void DeleteBook();
 		void Logout();
-		void Exit();
 };
 
 inline Client::Client(uint16_t port, string host) : conn(port, host) { }
-
-// inline bool Client::GetLoggedIn() {
-// 	return this->logged_in;
-// }
-// inline void Client::SetLoggedIn(bool logged_in){
-// 	this->logged_in = logged_in;
-// }
 
 #endif  // CLIENT_HPP_

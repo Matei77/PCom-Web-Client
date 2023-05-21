@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-void compute_message(string &message, string &line);
+void ComputeMessage(string &message, string &line);
+
+bool isStringNumerical(string str);
 
 // macro for handling error codes
 #define DIE(assertion, call_description)                                       \

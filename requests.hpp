@@ -2,14 +2,17 @@
 #ifndef REQUESTS_HPP_
 #define REQUESTS_HPP_
 
-#include <vector>
 #include <string>
+#include <vector>
 
-using namespace std; 
+using namespace std;
 
-string compute_get_request(string host, string url, string query_params, vector<string> cookies);
+string ComputeGetRequest(string host, string url, string query_params, vector<string> cookies,
+						 string jwt_token);
 
-string compute_post_request(string host, string url, string content_type, vector<string> body_data,
-							vector<string> cookies);
+string ComputePostRequest(string host, string url, string content_type, vector<string> body_data,
+						  vector<string> cookies, string jwt_token);
+
+string ComputeDeleteRequest(string host, string url, vector<string> cookies, string jwt_token);
 
 #endif  // REQUESTS_HPP_
