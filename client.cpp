@@ -40,7 +40,7 @@ void Client::RunClient() {
 		} else if (command == "exit") {
 			break;
 		} else {
-			cout << "Unrecognized command." << endl;
+			cout << "[ERROR] Unrecognized command." << endl;
 		}
 
 		// close the connection to the server
@@ -81,13 +81,19 @@ void Client::Register() {
 
 	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
+
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
 
 	// check if the account was created successfully
-	if (response.find("HTTP/1.1 201 Created") != string::npos) {
+	if (resp_info.status_code == "201") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Account was created successfully." << endl << endl;
 	} else {
-		cout << "The username is already taken." << endl << endl;
+		string error = resp_info.json_data["error"];
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << error << endl << endl;
 	}
 }
 
@@ -100,51 +106,54 @@ void Client::Login() {
 
 	vector<string> body_data;
 
+	// check if the user is already logged in
 	if (logged_in) {
-		cout << "You are already logged in." << endl << endl;
+		cout << "[ERROR] You are already logged in." << endl << endl;
 		return;
 	}
 
+	// read username and password
 	cout << "username="; getline(cin, username);
 	cout << "password="; getline(cin, password);
 
+	// check if username or password contains spaces
 	if (username.find(" ") != string::npos || password.find(" ") != string::npos) {
-		cout << "Spaces are not allowed in username/password." << endl << endl;
+		cout << "[ERROR] Spaces are not allowed in username/password." << endl << endl;
 		return;
 	}
 
+	// add the data to the content vector
 	body_data.push_back("\"username\": \"" + username + "\"");
 	body_data.push_back("\"password\": \"" + password + "\"");
 
+	// create the post request
 	message = ComputePostRequest(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data,
 								 vector<string>{}, "");
 
+	// send the message to the server
 	conn.SendToServer(message);
-	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	if (response.find("HTTP/1.1 200 OK") != string::npos) {
+	// receive the response from the server
+	response = conn.ReceiveFromServer();
+
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
+
+	// check if the login was successful
+	if (resp_info.status_code == "200") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Logged in successfully." << endl << endl;
 
-	} else if (response.find("No account with this username!") != string::npos) {
-		cout << "Loggin failed. There is no account with this username." << endl << endl;
-		return;
-
-	} else if (response.find("Credentials are not good!") != string::npos) {
-		cout << "Loggin failed. Bad credentials." << endl << endl;
-		return;
-
 	} else {
-		cout << "Loggin failed." << endl << endl;
+		string error = resp_info.json_data["error"];
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << error << endl << endl;
 		return;
 	}
 
-	auto start_pos = response.find("connect.sid");
-	auto end_pos = response.find(";", start_pos);
-
-	string cookie = response.substr(start_pos, end_pos - start_pos);
-
-	cookies.push_back(cookie);
+	// update cookes and login status
+	cookies = resp_info.set_cookies;
 	logged_in = true;
 }
 
@@ -152,63 +161,82 @@ void Client::EnterLibrary() {
 	string message;
 	string response;
 
+	// check if the user is not logged in
 	if (!logged_in) {
-		cout << "You are not logged in." << endl << endl;
+		cout << "[ERROR] You are not logged in." << endl << endl;
 		return;
 	}
 
+	// create the get request
 	message = ComputeGetRequest(conn.GetHost(), ACCESS_URL, "", cookies, "");
 
+	// send the message to the server
 	conn.SendToServer(message);
 
+	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
-	// TODO: check response
 
-	auto start_pos = response.find("\"token\":\"");
-	start_pos += strlen("\"token\":\"");
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
 
-	auto end_pos = response.find("\"", start_pos);
+	// check if the login was successful
+	if (resp_info.status_code == "200") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << "Successfully entered library." << endl << endl;
 
-	jwt_token = response.substr(start_pos, end_pos - start_pos);
+	} else {
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << "Could not enter library." << endl << endl;
+		return;
+	}
 
-	cout << "Successfully entered library." << endl << endl;
+	// update jwt_token
+	jwt_token = resp_info.json_data["token"];
 }
 
 void Client::GetBooks() {
 	string message;
 	string response;
 
+	// check if the user is authorized
 	if (jwt_token.empty()) {
-		cout << "You are not authorized. Enter library first." << endl << endl;
+		cout << "[ERROR] You are not authorized. Enter library first." << endl << endl;
 		return;
 	}
 
+	// create the get request
 	message = ComputeGetRequest(conn.GetHost(), BOOKS_URL, "", cookies, jwt_token);
 
+	// send the message to the server
 	conn.SendToServer(message);
 
+	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	auto pos = response.find(HEADER_TERMINATOR);
-	pos += HEADER_TERMINATOR_SIZE;
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
 
-	string json_str = response.substr(pos);
+	// check there was an error
+	if (resp_info.status_code != "200") {
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << "Could not get books." << endl << endl;
+		return;
+	}
 
-	nlohmann::json json_data = nlohmann::json::parse(json_str);
+	cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 
-	if (json_data.empty()) {
+	if (resp_info.json_data.empty()) {
 		cout << "No books found." << endl << endl;
 		return;
 	}
+	
+	cout << "Found the following books:" << endl;
 
-	for (const auto &item : json_data) {
-		int id = item["id"];
-		string title = item["title"];
-
-		cout << "id=" << id << "; "
-			 << "title=" << title << endl;
+	for (const auto &item : resp_info.json_data) {
+		cout << "id=" << item["id"] << " --> "
+			 << "title=" << item["title"] << endl;
 	}
 
 	cout << endl;
@@ -220,47 +248,54 @@ void Client::GetBook() {
 
 	string id;
 
+	// check if the user is authorized
 	if (jwt_token.empty()) {
-		cout << "You are not authorized. Enter library first." << endl << endl;
+		cout << "[ERROR] You are not authorized. Enter library first." << endl << endl;
 		return;
 	}
 
-	cout << "id=";
-	getline(cin, id);
+	// read the book id
+	cout << "id="; getline(cin, id);
 
+	// check the the id is a number
 	if (!IsStringNumerical(id)) {
-		cout << "Invalid id." << endl << endl;
+		cout << "[ERROR] Invalid id." << endl << endl;
 		return;
 	}
 
+	// create url
 	string url = BOOKS_URL;
 	url += "/" + id;
 
+	// create the get request
 	message = ComputeGetRequest(conn.GetHost(), url, "", cookies, jwt_token);
 
+	// send the message to the server
 	conn.SendToServer(message);
 
+	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	auto pos = response.find(HEADER_TERMINATOR);
-	pos += HEADER_TERMINATOR_SIZE;
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
 
-	string json_str = response.substr(pos);
+	// check for errors
+	if (resp_info.status_code != "200") {
+		string error = resp_info.json_data["error"];
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << error << endl << endl;
+		return;
+	}
 
-	nlohmann::json json_data = nlohmann::json::parse(json_str);
-
-	string title = json_data["title"];
-	string author = json_data["author"];
-	string genre = json_data["genre"];
-	string publisher = json_data["publisher"];
-	int page_count = json_data["page_count"];
-
-	cout << "title=" << title << endl;
-	cout << "author=" << author << endl;
-	cout << "genre=" << genre << endl;
-	cout << "publisher=" << publisher << endl;
-	cout << "page_count=" << page_count << endl;
+	// show the book info
+	cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+	cout << "Here are the book's informations:" << endl;
+	cout << "title=" << resp_info.json_data["title"] << endl;
+	cout << "author=" << resp_info.json_data["author"] << endl;
+	cout << "genre=" << resp_info.json_data["genre"] << endl;
+	cout << "publisher=" << resp_info.json_data["publisher"] << endl;
+	cout << "page_count=" << resp_info.json_data["page_count"] << endl;
 	cout << endl;
 }
 
@@ -274,11 +309,13 @@ void Client::AddBook() {
 	string publisher;
 	string page_count;
 
+	// check if the user is authorized
 	if (jwt_token.empty()) {
-		cout << "You are not authorized. Enter library first." << endl << endl;
+		cout << "[ERROR] You are not authorized. Enter library first." << endl << endl;
 		return;
 	}
 
+	// read book's info
 	cout << "title=";      getline(cin, title);
 	cout << "author=";     getline(cin, author);
 	cout << "genre=";      getline(cin, genre);
@@ -287,27 +324,27 @@ void Client::AddBook() {
 
 	// check read values
 	if (EmptyOrContainsOnlySpaces(title)) {
-		cout << "Invalid title." << endl << endl;
+		cout << "[ERROR] Invalid title." << endl << endl;
 		return;
 	}
 	
 	if (EmptyOrContainsOnlySpaces(author)) {
-		cout << "Invalid author." << endl << endl;
+		cout << "[ERROR] Invalid author." << endl << endl;
 		return;
 	}
 
 	if (EmptyOrContainsOnlySpaces(genre)) {
-		cout << "Invalid genre." << endl << endl;
+		cout << "[ERROR] Invalid genre." << endl << endl;
 		return;
 	} 
 	
 	if (EmptyOrContainsOnlySpaces(publisher)) {
-		cout << "Invalid publisher." << endl << endl;
+		cout << "[ERROR] Invalid publisher." << endl << endl;
 		return;
 	}
 
 	if (!IsStringNumerical(page_count)) {
-		cout << "Invalid page_count." << endl << endl;
+		cout << "[ERROR] Invalid page_count." << endl << endl;
 		return;
 	}
 
@@ -325,12 +362,18 @@ void Client::AddBook() {
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	if (response.find("HTTP/1.1 200 OK") != string::npos) {
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
+
+	// show message to user
+	if (resp_info.status_code == "200") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Book added successfully." << endl << endl;
-
+		return;
 	} else {
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Invalid book info." << endl << endl;
 	}
 }
@@ -341,34 +384,45 @@ void Client::DeleteBook() {
 
 	string id;
 
+	// check if the user is authorized
 	if (jwt_token.empty()) {
-		cout << "You are not authorized. Enter library first." << endl << endl;
+		cout << "[ERROR] You are not authorized. Enter library first." << endl << endl;
 		return;
 	}
 
-	cout << "id=";
-	getline(cin, id);
+	// read the book id
+	cout << "id="; getline(cin, id);
 
+	// check the the id is a number
 	if (!IsStringNumerical(id)) {
-		cout << "Invalid id." << endl << endl;
+		cout << "[ERROR] Invalid id." << endl << endl;
 		return;
 	}
 
+	// create url
 	string url = BOOKS_URL;
 	url += "/" + id;
 
 	message = ComputeDeleteRequest(conn.GetHost(), url, cookies, jwt_token);
 
+	// send the message to the server
 	conn.SendToServer(message);
 
+	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	if (response.find("HTTP/1.1 200 OK") != string::npos) {
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
+
+	// give response to user
+	if (resp_info.status_code == "200") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Book deleted successfully." << endl << endl;
-
+		return;
 	} else {
-		cout << "No book was deleted." << endl << endl;
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << "No book has the given id." << endl << endl;
 	}
 }
 
@@ -376,26 +430,38 @@ void Client::Logout() {
 	string message;
 	string response;
 
+	// check if the user is not logged in
 	if (!logged_in) {
-		cout << "You are not logged in." << endl << endl;
+		cout << "[ERROR] You are not logged in." << endl << endl;
 		return;
 	}
 
+	// create the get request
 	message = ComputeGetRequest(conn.GetHost(), LOGOUT_URL, "", cookies, "");
 
+	// send the message to the server
 	conn.SendToServer(message);
 
+	// receive the response from the server
 	response = conn.ReceiveFromServer();
-	cout << response << endl;
 
-	if (response.find("HTTP/1.1 200 OK") == string::npos) {
+	// parse the response
+	response_info_t resp_info;
+	ParseServerResponse(response, resp_info);
+
+	// give response to user
+	if (resp_info.status_code == "200") {
+		cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
+		cout << "Logged out successfully." << endl << endl;
+
+	} else {
+		cout << "[ERROR - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 		cout << "Log out failed." << endl << endl;
 		return;
 	}
 
+	// update values
 	jwt_token.clear();
 	cookies.clear();
 	logged_in = false;
-
-	cout << "Logged out successfully." << endl << endl;
 }

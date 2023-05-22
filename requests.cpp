@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "requests.hpp"
 #include "client.hpp"
 #include "json.hpp"
 #include "utils.hpp"
@@ -142,17 +143,22 @@ string ComputeDeleteRequest(string host, string url, vector<string> cookies, str
 	return message;
 }
 
-void ParseServerResponse(string response, string &status_code, string &status_text,
-						 vector<string> &set_cookies, nlohmann::json &json_data) {
+void ParseServerResponse(string response, response_info_t &resp_info) {
 	auto header_terminator_pos = response.find(HEADER_TERMINATOR);
 
 	istringstream http(response.substr(0, header_terminator_pos));
-	string json = response.substr(header_terminator_pos + HEADER_TERMINATOR_SIZE);
+
+	string json;
+	auto json_start = response.find("{", header_terminator_pos);
+
+	if (json_start != string::npos) {
+		json = response.substr(header_terminator_pos + HEADER_TERMINATOR_SIZE);
+	}
 
 	string line;
 	getline(http, line, ' ');
-	getline(http, status_code, ' ');
-	getline(http, status_text, '\r');
+	getline(http, resp_info.status_code, ' ');
+	getline(http, resp_info.status_text, '\r');
 
 	while (getline(http, line) && line != "\r") {
 		istringstream linestream(line);
@@ -163,10 +169,12 @@ void ParseServerResponse(string response, string &status_code, string &status_te
 		if (header == "Set-Cookie") {
 			getline(linestream, cookie, ';');
 			cookie.erase(0, cookie.find_first_not_of(" \t\r\n"));
+		
+			resp_info.set_cookies.push_back(cookie);
 		}
-
-		set_cookies.push_back(cookie);
 	}
 
-	json_data = nlohmann::json::parse(json);
+	if (!json.empty()) {
+		resp_info.json_data = nlohmann::json::parse(json);
+	}
 }
