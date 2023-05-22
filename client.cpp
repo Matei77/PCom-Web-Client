@@ -64,7 +64,7 @@ void Client::Register() {
 
 	// check if username or password contains spaces
 	if (username.find(" ") != string::npos || password.find(" ") != string::npos) {
-		cout << "Spaces are not allowed in username/password." << endl << endl;
+		cout << "[ERROR] Spaces are not allowed in username/password." << endl << endl;
 		return;
 	}
 
