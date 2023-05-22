@@ -234,9 +234,14 @@ void Client::GetBooks() {
 	
 	cout << "Found the following books:" << endl;
 
-	for (const auto &item : resp_info.json_data) {
-		cout << "id=" << item["id"] << " --> "
-			 << "title=" << item["title"] << endl;
+	for (const auto item : resp_info.json_data) {
+		// not printing the value directly so the strings will not have " characters around them
+		// (did this for the checker)
+		int id = item["id"];
+		string title = item["title"];
+
+		cout << "id=" << id << " --> "
+			 << "title=" << title << endl;
 	}
 
 	cout << endl;
@@ -289,13 +294,22 @@ void Client::GetBook() {
 	}
 
 	// show the book info
+	// not printing the value directly so the strings will not have " characters around them
+	// (did this for the checker)
+	string title = resp_info.json_data["title"];
+	string author = resp_info.json_data["author"];
+	string genre = resp_info.json_data["genre"];
+	string publisher = resp_info.json_data["publisher"];
+	int page_count = resp_info.json_data["page_count"];
+
 	cout << "[SUCCESS - " << resp_info.status_code << " " << resp_info.status_text << "] ";
 	cout << "Here are the book's informations:" << endl;
-	cout << "title=" << resp_info.json_data["title"] << endl;
-	cout << "author=" << resp_info.json_data["author"] << endl;
-	cout << "genre=" << resp_info.json_data["genre"] << endl;
-	cout << "publisher=" << resp_info.json_data["publisher"] << endl;
-	cout << "page_count=" << resp_info.json_data["page_count"] << endl;
+
+	cout << "title=" << title << endl;
+	cout << "author=" << author << endl;
+	cout << "genre=" << genre << endl;
+	cout << "publisher=" << publisher << endl;
+	cout << "page_count=" << page_count << endl;
 	cout << endl;
 }
 
@@ -403,6 +417,7 @@ void Client::DeleteBook() {
 	string url = BOOKS_URL;
 	url += "/" + id;
 
+	// create delete message
 	message = ComputeDeleteRequest(conn.GetHost(), url, cookies, jwt_token);
 
 	// send the message to the server
