@@ -1,59 +1,53 @@
-#include <iostream>
-#include <vector>
-#include <string>
 #include <cstring>
-
-using namespace std;
+#include <iostream>
+#include <string>
+#include <vector>
 
 #include "client.hpp"
+#include "json.hpp"
 #include "requests.hpp"
 #include "utils.hpp"
-#include "json.hpp"
+
+using namespace std;
 
 void Client::RunClient() {
 	string command;
 
 	do {
-		getline(cin, command);
+		// read command
+		cout << "-> "; getline(cin, command);
 
+		// open connection to server to send the request
 		conn.OpenConnection();
 
+		// check what command was given
 		if (command == "register") {
 			Register();
-
 		} else if (command == "login") {
 			Login();
-
 		} else if (command == "enter_library") {
 			EnterLibrary();
-
 		} else if (command == "get_books") {
 			GetBooks();
-
 		} else if (command == "get_book") {
 			GetBook();
-
 		} else if (command == "add_book") {
 			AddBook();
-
 		} else if (command == "delete_book") {
 			DeleteBook();
-		
 		} else if (command == "logout") {
 			Logout();
-		
 		} else if (command == "exit") {
 			break;
-
 		} else {
 			cout << "Unrecognized command." << endl;
-		} 
+		}
 
+		// close the connection to the server
 		conn.CloseConnection();
 
 	} while (1);
 }
-
 
 void Client::Register() {
 	string message;
@@ -63,34 +57,39 @@ void Client::Register() {
 	string password;
 
 	vector<string> body_data;
-	
-	cout << "username=";
-	getline(cin, username);
-	cout << "password=";
-	getline(cin, password);
 
+	// read username and password
+	cout << "username="; getline(cin, username);
+	cout << "password="; getline(cin, password);
+
+	// check if username or password contains spaces
 	if (username.find(" ") != string::npos || password.find(" ") != string::npos) {
 		cout << "Spaces are not allowed in username/password." << endl << endl;
-
 		return;
 	}
 
+	// add the data to the content vector
 	body_data.push_back("\"username\": \"" + username + "\"");
 	body_data.push_back("\"password\": \"" + password + "\"");
 
+	// create the post request
+	message = ComputePostRequest(conn.GetHost(), REGISTER_URL, JSON_PAYLOAD, body_data,
+								 vector<string>{}, "");
 
-	message = ComputePostRequest(conn.GetHost(), REGISTER_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
-
+	// send the message to the server
 	conn.SendToServer(message);
-	response = conn.ReceiveFromServer();
 
+	// receive the response from the server
+	response = conn.ReceiveFromServer();
+	cout << response << endl;
+
+	// check if the account was created successfully
 	if (response.find("HTTP/1.1 201 Created") != string::npos) {
 		cout << "Account was created successfully." << endl << endl;
 	} else {
 		cout << "The username is already taken." << endl << endl;
 	}
 }
-
 
 void Client::Login() {
 	string message;
@@ -105,7 +104,7 @@ void Client::Login() {
 		cout << "You are already logged in." << endl << endl;
 		return;
 	}
-	
+
 	cout << "username="; getline(cin, username);
 	cout << "password="; getline(cin, password);
 
@@ -117,10 +116,12 @@ void Client::Login() {
 	body_data.push_back("\"username\": \"" + username + "\"");
 	body_data.push_back("\"password\": \"" + password + "\"");
 
-	message = ComputePostRequest(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data, vector<string>{}, "");
+	message = ComputePostRequest(conn.GetHost(), LOGIN_URL, JSON_PAYLOAD, body_data,
+								 vector<string>{}, "");
 
 	conn.SendToServer(message);
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") != string::npos) {
 		cout << "Logged in successfully." << endl << endl;
@@ -147,7 +148,6 @@ void Client::Login() {
 	logged_in = true;
 }
 
-
 void Client::EnterLibrary() {
 	string message;
 	string response;
@@ -158,22 +158,22 @@ void Client::EnterLibrary() {
 	}
 
 	message = ComputeGetRequest(conn.GetHost(), ACCESS_URL, "", cookies, "");
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 	// TODO: check response
 
 	auto start_pos = response.find("\"token\":\"");
 	start_pos += strlen("\"token\":\"");
-	
+
 	auto end_pos = response.find("\"", start_pos);
-	
+
 	jwt_token = response.substr(start_pos, end_pos - start_pos);
 
 	cout << "Successfully entered library." << endl << endl;
 }
-
 
 void Client::GetBooks() {
 	string message;
@@ -185,10 +185,11 @@ void Client::GetBooks() {
 	}
 
 	message = ComputeGetRequest(conn.GetHost(), BOOKS_URL, "", cookies, jwt_token);
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
 	auto pos = response.find(HEADER_TERMINATOR);
 	pos += HEADER_TERMINATOR_SIZE;
@@ -197,14 +198,21 @@ void Client::GetBooks() {
 
 	nlohmann::json json_data = nlohmann::json::parse(json_str);
 
-	for (const auto & item : json_data) {
+	if (json_data.empty()) {
+		cout << "No books found." << endl << endl;
+		return;
+	}
+
+	for (const auto &item : json_data) {
 		int id = item["id"];
 		string title = item["title"];
 
-		cout << "{id=" << id << "; " << "title=" << title << "}" << endl;
+		cout << "id=" << id << "; "
+			 << "title=" << title << endl;
 	}
-}
 
+	cout << endl;
+}
 
 void Client::GetBook() {
 	string message;
@@ -217,9 +225,10 @@ void Client::GetBook() {
 		return;
 	}
 
-	cout << "id="; getline(cin, id);
+	cout << "id=";
+	getline(cin, id);
 
-	if (!isStringNumerical(id)) {
+	if (!IsStringNumerical(id)) {
 		cout << "Invalid id." << endl << endl;
 		return;
 	}
@@ -228,11 +237,12 @@ void Client::GetBook() {
 	url += "/" + id;
 
 	message = ComputeGetRequest(conn.GetHost(), url, "", cookies, jwt_token);
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
-	
+	cout << response << endl;
+
 	auto pos = response.find(HEADER_TERMINATOR);
 	pos += HEADER_TERMINATOR_SIZE;
 
@@ -254,7 +264,6 @@ void Client::GetBook() {
 	cout << endl;
 }
 
-
 void Client::AddBook() {
 	string message;
 	string response;
@@ -270,13 +279,34 @@ void Client::AddBook() {
 		return;
 	}
 
-	cout << "title="; getline(cin, title);
-	cout << "author="; getline(cin, author);
-	cout << "genre="; getline(cin, genre);
-	cout << "publisher="; getline(cin, publisher);
+	cout << "title=";      getline(cin, title);
+	cout << "author=";     getline(cin, author);
+	cout << "genre=";      getline(cin, genre);
+	cout << "publisher=";  getline(cin, publisher);
 	cout << "page_count="; getline(cin, page_count);
 
-	if (!isStringNumerical(page_count)) {
+	// check read values
+	if (EmptyOrContainsOnlySpaces(title)) {
+		cout << "Invalid title." << endl << endl;
+		return;
+	}
+	
+	if (EmptyOrContainsOnlySpaces(author)) {
+		cout << "Invalid author." << endl << endl;
+		return;
+	}
+
+	if (EmptyOrContainsOnlySpaces(genre)) {
+		cout << "Invalid genre." << endl << endl;
+		return;
+	} 
+	
+	if (EmptyOrContainsOnlySpaces(publisher)) {
+		cout << "Invalid publisher." << endl << endl;
+		return;
+	}
+
+	if (!IsStringNumerical(page_count)) {
 		cout << "Invalid page_count." << endl << endl;
 		return;
 	}
@@ -289,11 +319,13 @@ void Client::AddBook() {
 	body_data.push_back("\"publisher\": \"" + publisher + "\"");
 	body_data.push_back("\"page_count\": " + page_count);
 
-	message = ComputePostRequest(conn.GetHost(), BOOKS_URL, JSON_PAYLOAD, body_data, cookies, jwt_token);
+	message =
+		ComputePostRequest(conn.GetHost(), BOOKS_URL, JSON_PAYLOAD, body_data, cookies, jwt_token);
 
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") != string::npos) {
 		cout << "Book added successfully." << endl << endl;
@@ -302,7 +334,6 @@ void Client::AddBook() {
 		cout << "Invalid book info." << endl << endl;
 	}
 }
-
 
 void Client::DeleteBook() {
 	string message;
@@ -315,9 +346,10 @@ void Client::DeleteBook() {
 		return;
 	}
 
-	cout << "id="; getline(cin, id);
+	cout << "id=";
+	getline(cin, id);
 
-	if (!isStringNumerical(id)) {
+	if (!IsStringNumerical(id)) {
 		cout << "Invalid id." << endl << endl;
 		return;
 	}
@@ -326,10 +358,11 @@ void Client::DeleteBook() {
 	url += "/" + id;
 
 	message = ComputeDeleteRequest(conn.GetHost(), url, cookies, jwt_token);
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") != string::npos) {
 		cout << "Book deleted successfully." << endl << endl;
@@ -338,7 +371,6 @@ void Client::DeleteBook() {
 		cout << "No book was deleted." << endl << endl;
 	}
 }
-
 
 void Client::Logout() {
 	string message;
@@ -350,10 +382,11 @@ void Client::Logout() {
 	}
 
 	message = ComputeGetRequest(conn.GetHost(), LOGOUT_URL, "", cookies, "");
-	
+
 	conn.SendToServer(message);
 
 	response = conn.ReceiveFromServer();
+	cout << response << endl;
 
 	if (response.find("HTTP/1.1 200 OK") == string::npos) {
 		cout << "Log out failed." << endl << endl;
@@ -365,5 +398,4 @@ void Client::Logout() {
 	logged_in = false;
 
 	cout << "Logged out successfully." << endl << endl;
-
 }

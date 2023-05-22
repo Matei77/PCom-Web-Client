@@ -1,13 +1,16 @@
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "client.hpp"
+#include "json.hpp"
 #include "utils.hpp"
 
 using namespace std;
 
-string ComputeGetRequest(string host, string url, string query_params, vector<string> cookies, string jwt_token) {
+string ComputeGetRequest(string host, string url, string query_params, vector<string> cookies,
+						 string jwt_token) {
 	string message;
 	string line;
 
@@ -47,7 +50,7 @@ string ComputeGetRequest(string host, string url, string query_params, vector<st
 }
 
 string ComputePostRequest(string host, string url, string content_type, vector<string> body_data,
-							vector<string> cookies, string jwt_token) {
+						  vector<string> cookies, string jwt_token) {
 	string message;
 	string line;
 	string data_buffer;
@@ -78,7 +81,6 @@ string ComputePostRequest(string host, string url, string content_type, vector<s
 	// remove the last ""
 	data_buffer.resize(data_buffer.size() - 2);
 	data_buffer += "}";
-
 
 	// set Content-Length
 	line += "Content-Length: " + to_string(data_buffer.size());
@@ -138,4 +140,33 @@ string ComputeDeleteRequest(string host, string url, vector<string> cookies, str
 	ComputeMessage(message, line);
 
 	return message;
+}
+
+void ParseServerResponse(string response, string &status_code, string &status_text,
+						 vector<string> &set_cookies, nlohmann::json &json_data) {
+	auto header_terminator_pos = response.find(HEADER_TERMINATOR);
+
+	istringstream http(response.substr(0, header_terminator_pos));
+	string json = response.substr(header_terminator_pos + HEADER_TERMINATOR_SIZE);
+
+	string line;
+	getline(http, line, ' ');
+	getline(http, status_code, ' ');
+	getline(http, status_text, '\r');
+
+	while (getline(http, line) && line != "\r") {
+		istringstream linestream(line);
+		string header;
+		string cookie;
+
+		getline(linestream, header, ':');
+		if (header == "Set-Cookie") {
+			getline(linestream, cookie, ';');
+			cookie.erase(0, cookie.find_first_not_of(" \t\r\n"));
+		}
+
+		set_cookies.push_back(cookie);
+	}
+
+	json_data = nlohmann::json::parse(json);
 }

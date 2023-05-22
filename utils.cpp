@@ -8,7 +8,7 @@ void ComputeMessage(string &message, string &line) {
 	line.clear();
 }
 
-bool isStringNumerical(string str) {
+bool IsStringNumerical(string str) {
     // check if the string is empty
     if (str.empty()) {
         return false;
@@ -23,5 +23,18 @@ bool isStringNumerical(string str) {
     }
 
     // all characters are digits
+    return true;
+}
+
+bool EmptyOrContainsOnlySpaces(string str) {
+    if (str.empty()) {
+        return true;
+    }
+
+    for (char c : str) {
+        if (c != ' ') {
+            return false;
+        }
+    }
     return true;
 }

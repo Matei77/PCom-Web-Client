@@ -9,7 +9,9 @@
 
 void ComputeMessage(string &message, string &line);
 
-bool isStringNumerical(string str);
+bool IsStringNumerical(string str);
+
+bool EmptyOrContainsOnlySpaces(string str);
 
 // macro for handling error codes
 #define DIE(assertion, call_description)                                       \
