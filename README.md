@@ -3,7 +3,7 @@
 
 # PCom Homework #4 - Web-Client using REST API
 
-This application sends HTTP requests to a server based on the users commands.
+This application sends HTTP requests to a server based on the user's commands.
 The user has the ability to register, login, logout, and interact with the
 books stored on the server. The available commands are: `register`, `login`,
 `enter_library`, `get_books`, `get_book`, `add_book`, `delete_book`, `logout`
